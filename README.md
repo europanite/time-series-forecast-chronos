@@ -244,3 +244,21 @@ Example explanation:
 - Add electricity-domain metrics such as MAPE, pinball loss, imbalance cost, and trading P&L.
 - Add optional TimesFM covariate support through XReg only after validating the dependency footprint.
 - Add a Streamlit or FastAPI dashboard for reviewing forecast results.
+
+## Troubleshooting
+
+### TimesFM `proxies` error
+
+If TimesFM fails with the following error:
+
+```text
+TypeError: TimesFM_2p5_200M_torch.__init__() got an unexpected keyword argument 'proxies'
+```
+
+rebuild the image from this updated repository:
+
+```bash
+docker compose build --no-cache
+```
+
+This repository pins `huggingface-hub` to `<1.0.0` because current TimesFM 2.5 releases can receive an unexpected `proxies` keyword through the Hugging Face Hub 1.x loading path.

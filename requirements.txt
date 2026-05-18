@@ -1,4 +1,7 @@
 # Docker Compose installs the current Google Research TimesFM package from GitHub
 # because the PyPI package can lag behind the TimesFM 2.5 API.
+# Keep huggingface-hub below 1.0 because current TimesFM 2.5 from_pretrained
+# can receive an unexpected proxies keyword from huggingface-hub 1.x.
+huggingface-hub>=0.34.0,<1.0.0
 timesfm[torch] @ git+https://github.com/google-research/timesfm.git
 -e .
