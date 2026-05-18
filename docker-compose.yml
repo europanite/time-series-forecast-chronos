@@ -1,0 +1,37 @@
+services:
+  forecast:
+    build:
+      context: .
+    image: local-ts-forecast:latest
+    env_file:
+      - .env
+    environment:
+      HF_HOME: ${HF_HOME:-/cache/huggingface}
+      MODEL_ID: ${MODEL_ID:-autogluon/chronos-2-small}
+      DEVICE: ${DEVICE:-cpu}
+    volumes:
+      - .:/workspace
+      - hf-cache:/cache/huggingface
+    working_dir: /workspace
+    command: ["python", "-m", "local_ts_forecast.cli", "--help"]
+
+  api:
+    build:
+      context: .
+    image: local-ts-forecast:latest
+    env_file:
+      - .env
+    environment:
+      HF_HOME: ${HF_HOME:-/cache/huggingface}
+      MODEL_ID: ${MODEL_ID:-autogluon/chronos-2-small}
+      DEVICE: ${DEVICE:-cpu}
+    volumes:
+      - .:/workspace
+      - hf-cache:/cache/huggingface
+    working_dir: /workspace
+    ports:
+      - "8000:8000"
+    command: ["uvicorn", "local_ts_forecast.api:app", "--host", "0.0.0.0", "--port", "8000"]
+
+volumes:
+  hf-cache:

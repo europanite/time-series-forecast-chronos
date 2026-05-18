@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+outputs/*.csv
+outputs/*.png
+outputs/*.json
+outputs/*.parquet
+.hf-cache/
