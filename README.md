@@ -37,33 +37,7 @@ For electricity forecasting, a practical workflow is:
 3. Run `timesfm` as a separate univariate foundation-model baseline.
 4. Compare both against conventional baselines such as LightGBM, Prophet, or seasonal naive in a rolling backtest.
 
-## Repository layout
-
-```text
-.
-├── docker-compose.yml
-├── docker-compose.gpu.yml
-├── Dockerfile
-├── pyproject.toml
-├── requirements.txt
-├── src/local_ts_forecast
-│   ├── api.py
-│   ├── cli.py
-│   ├── forecaster.py
-│   ├── io.py
-│   ├── plotting.py
-│   ├── sample_data.py
-│   └── settings.py
-├── data
-├── outputs
-└── scripts
-```
-
 ## 1. Initial setup
-
-```bash
-cp .env.example .env
-```
 
 Default `.env` values:
 
