@@ -1,0 +1,24 @@
+title: "time-series-forecast-chronos"
+description: "Python environment built with Docker Compose"
+baseurl: "/time-series-forecast-chronos"
+url: "https://europanite.github.io"
+theme: minima
+markdown: kramdown
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+highlighter: rouge
+
+header_pages:
+  - README.md
+  - README.hi.md
+  - README.ja.md
+  - README.zh-CN.md
+  - README.es.md
+  - README.pt-BR.md
+  - README.ko.md
+  - README.de.md
+  - README.fr.md
+
+exclude:
+  - service/reports/
