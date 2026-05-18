@@ -7,6 +7,9 @@ services:
       - .env
     environment:
       HF_HOME: ${HF_HOME:-/cache/huggingface}
+      FORECAST_BACKEND: ${FORECAST_BACKEND:-chronos2}
+      CHRONOS_MODEL_ID: ${CHRONOS_MODEL_ID:-autogluon/chronos-2-small}
+      TIMESFM_MODEL_ID: ${TIMESFM_MODEL_ID:-google/timesfm-2.5-200m-pytorch}
       MODEL_ID: ${MODEL_ID:-autogluon/chronos-2-small}
       DEVICE: ${DEVICE:-cpu}
     volumes:
@@ -23,6 +26,9 @@ services:
       - .env
     environment:
       HF_HOME: ${HF_HOME:-/cache/huggingface}
+      FORECAST_BACKEND: ${FORECAST_BACKEND:-chronos2}
+      CHRONOS_MODEL_ID: ${CHRONOS_MODEL_ID:-autogluon/chronos-2-small}
+      TIMESFM_MODEL_ID: ${TIMESFM_MODEL_ID:-google/timesfm-2.5-200m-pytorch}
       MODEL_ID: ${MODEL_ID:-autogluon/chronos-2-small}
       DEVICE: ${DEVICE:-cpu}
     volumes:

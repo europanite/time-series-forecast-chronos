@@ -27,7 +27,7 @@ def forecast_command(args: argparse.Namespace) -> None:
     future_df = read_csv(args.future_input) if args.future_input else None
 
     config = ForecastConfig(
-        model_id=args.model_id or settings.model_id,
+        model_id=args.model_id or settings.model_id_for_backend(args.backend),
         device=args.device or settings.device,
         prediction_length=args.prediction_length or settings.prediction_length,
         quantile_levels=args.quantiles,
@@ -74,7 +74,7 @@ def validate_command(args: argparse.Namespace) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Local time-series forecasting with Chronos-2")
+    parser = argparse.ArgumentParser(description="Local time-series forecasting with Chronos-2, TimesFM, or seasonal naive")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     sample = subparsers.add_parser("sample-data", help="Generate synthetic electricity-like sample data")
@@ -90,13 +90,13 @@ def build_parser() -> argparse.ArgumentParser:
     forecast.add_argument("--output", default="outputs/forecast.csv")
     forecast.add_argument("--plot", default="outputs/forecast.png")
     forecast.add_argument("--prediction-length", type=int, default=int(os.getenv("PREDICTION_LENGTH", "48")))
-    forecast.add_argument("--model-id", default=os.getenv("MODEL_ID", "autogluon/chronos-2-small"))
+    forecast.add_argument("--model-id", help="Hugging Face model id. Defaults to CHRONOS_MODEL_ID or TIMESFM_MODEL_ID based on backend.")
     forecast.add_argument("--device", default=os.getenv("DEVICE", "cpu"), choices=["cpu", "cuda", "auto"])
     forecast.add_argument("--quantiles", type=parse_quantiles, default=(0.1, 0.5, 0.9))
     forecast.add_argument("--target", default="target")
     forecast.add_argument("--batch-size", type=int)
     forecast.add_argument("--context-length", type=int)
-    forecast.add_argument("--backend", choices=["chronos2", "seasonal_naive"], default="chronos2")
+    forecast.add_argument("--backend", choices=["chronos2", "timesfm", "seasonal_naive"], default=os.getenv("FORECAST_BACKEND", "chronos2"))
     forecast.set_defaults(func=forecast_command)
 
     validate = subparsers.add_parser("validate", help="Validate CSV and pipeline without downloading a model")

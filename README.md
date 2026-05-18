@@ -1,34 +1,79 @@
 # Local Time-Series Forecasting with Docker Compose
 
-A minimal Docker Compose repository for running a local time-series foundation model.
+A minimal Docker Compose repository for running local time-series foundation models.
 
-The main use case is to try zero-shot probabilistic forecasting with Chronos-2 style models for time-series data such as electricity demand, renewable energy generation, or market prices.
+The repository supports three interchangeable forecasting backends:
+
+- `chronos2`: Chronos-2 style forecasting through `chronos-forecasting`
+- `timesfm`: TimesFM 2.5 style forecasting through `timesfm[torch]`
+- `seasonal_naive`: offline smoke-test backend that needs no model download
+
+The main use case is to try zero-shot forecasting for data such as electricity demand, renewable energy generation, or market prices.
 
 ## What this repository does
 
 - Runs both a CLI and an API with Docker Compose
-- Downloads a Chronos-2 style model from Hugging Face on the first run
+- Lets you select `chronos2`, `timesfm`, or `seasonal_naive` at runtime
+- Downloads model files from Hugging Face on the first model run
 - Reuses the Docker volume cache after the first download
 - Reads CSV input and writes forecast results as CSV and PNG
-- Outputs probabilistic forecasts with `0.1`, `0.5`, and `0.9` quantiles
-- Includes a `seasonal_naive` backend for smoke testing without downloading a model
+- Outputs a shared schema: `id`, `timestamp`, `predictions`, `0.1`, `0.5`, `0.9`
+- Keeps a model-free backend for validating Docker, CSV parsing, and plotting
 
-> Note: An internet connection is required only for the first model download. After that, the model files are kept in the `hf-cache` Docker volume and reused locally.
+> Note: An internet connection is required for the first model download. After that, model files are kept in the `hf-cache` Docker volume and reused locally.
+
+## Backend guide
+
+| Backend | Model family | Best use in this repo | Notes |
+|---|---|---|---|
+| `chronos2` | Amazon Chronos-2 | Multivariate or covariate-informed experiments | Recommended when you want to include known future covariates |
+| `timesfm` | Google TimesFM 2.5 | Simple univariate zero-shot comparison | The minimal wrapper intentionally ignores future covariate columns |
+| `seasonal_naive` | No foundation model | Offline smoke test | Useful before downloading any model |
+
+For electricity forecasting, a practical workflow is:
+
+1. Validate the pipeline with `seasonal_naive`.
+2. Run `chronos2` with history and known future covariates.
+3. Run `timesfm` as a separate univariate foundation-model baseline.
+4. Compare both against conventional baselines such as LightGBM, Prophet, or seasonal naive in a rolling backtest.
+
+## Repository layout
+
+```text
+.
+├── docker-compose.yml
+├── docker-compose.gpu.yml
+├── Dockerfile
+├── pyproject.toml
+├── requirements.txt
+├── src/local_ts_forecast
+│   ├── api.py
+│   ├── cli.py
+│   ├── forecaster.py
+│   ├── io.py
+│   ├── plotting.py
+│   ├── sample_data.py
+│   └── settings.py
+├── data
+├── outputs
+└── scripts
+```
 
 ## 1. Initial setup
 
-For a first CPU run, use:
+```bash
+cp .env.example .env
+```
+
+Default `.env` values:
 
 ```env
 DEVICE=cpu
-MODEL_ID=autogluon/chronos-2-small
+FORECAST_BACKEND=chronos2
+CHRONOS_MODEL_ID=autogluon/chronos-2-small
+TIMESFM_MODEL_ID=google/timesfm-2.5-200m-pytorch
+HF_HOME=/cache/huggingface
 PREDICTION_LENGTH=48
-```
-
-For a lighter test, use:
-
-```env
-MODEL_ID=amazon/chronos-bolt-tiny
 ```
 
 ## 2. Build the container
@@ -36,6 +81,8 @@ MODEL_ID=amazon/chronos-bolt-tiny
 ```bash
 docker compose build
 ```
+
+The image installs both Chronos and TimesFM dependencies. TimesFM is installed from the Google Research GitHub repository because the PyPI package can lag behind the latest TimesFM 2.5 API. This can take longer than the Chronos-only version because TimesFM brings additional PyTorch-related packages.
 
 ## 3. Generate sample data
 
@@ -66,37 +113,70 @@ docker compose run --rm forecast \
   --prediction-length 48
 ```
 
-This uses the `seasonal_naive` backend to validate the CSV format and the end-to-end pipeline. It does not download or run a Chronos model.
+This uses the `seasonal_naive` backend to validate the CSV format and the end-to-end pipeline. It does not download or run a foundation model.
+
+You can also run the smoke-test backend through the main forecast command:
+
+```bash
+docker compose run --rm forecast \
+  python -m local_ts_forecast.cli forecast \
+  --backend seasonal_naive \
+  --input data/sample_history.csv \
+  --future-input data/sample_future.csv \
+  --output outputs/forecast_seasonal_naive.csv \
+  --plot outputs/forecast_seasonal_naive.png \
+  --prediction-length 48
+```
 
 ## 5. Run a forecast with Chronos-2
 
 ```bash
 docker compose run --rm forecast \
   python -m local_ts_forecast.cli forecast \
+  --backend chronos2 \
   --input data/sample_history.csv \
   --future-input data/sample_future.csv \
-  --output outputs/forecast.csv \
-  --plot outputs/forecast.png \
+  --output outputs/forecast_chronos2.csv \
+  --plot outputs/forecast_chronos2.png \
   --prediction-length 48
 ```
 
-Outputs:
+Chronos-2 is the better default in this repository when you want to test known future covariates or multiple related series.
 
-- `outputs/forecast.csv`
-- `outputs/forecast.png`
+## 6. Run a forecast with TimesFM
 
-The CSV includes probabilistic forecast columns such as `q10`, `q50`, and `q90`.
+```bash
+docker compose run --rm forecast \
+  python -m local_ts_forecast.cli forecast \
+  --backend timesfm \
+  --input data/sample_history.csv \
+  --future-input data/sample_future.csv \
+  --output outputs/forecast_timesfm.csv \
+  --plot outputs/forecast_timesfm.png \
+  --prediction-length 48 \
+  --context-length 1024
+```
 
-## 6. Run as an API
+The TimesFM backend uses `TIMESFM_MODEL_ID` by default. You can override it directly:
+
+```bash
+docker compose run --rm forecast \
+  python -m local_ts_forecast.cli forecast \
+  --backend timesfm \
+  --model-id google/timesfm-2.5-200m-pytorch \
+  --input data/sample_history.csv \
+  --future-input data/sample_future.csv \
+  --output outputs/forecast_timesfm.csv \
+  --plot outputs/forecast_timesfm.png \
+  --prediction-length 48
+```
+
+Important limitation: the minimal TimesFM wrapper in this repository intentionally treats TimesFM as a univariate zero-shot model. It uses the target history and future timestamps, but it does not use additional future covariate columns. Use the `chronos2` backend for covariate-informed experiments.
+
+## 7. Run as an API
 
 ```bash
 docker compose up api
-```
-
-In another terminal, run:
-
-```bash
-docker compose run --rm forecast python scripts/api_example.py
 ```
 
 Health check:
@@ -105,20 +185,31 @@ Health check:
 curl http://localhost:8000/health
 ```
 
-## 7. Run with an NVIDIA GPU
+Run the API example:
+
+```bash
+docker compose run --rm forecast python scripts/api_example.py
+```
+
+To request TimesFM from the API, set `backend` to `timesfm` in the JSON payload.
+
+## 8. Run with an NVIDIA GPU
 
 This requires NVIDIA Container Toolkit on the host machine.
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.gpu.yml run --rm forecast \
   python -m local_ts_forecast.cli forecast \
+  --backend chronos2 \
   --input data/sample_history.csv \
   --future-input data/sample_future.csv \
-  --output outputs/forecast.csv \
-  --plot outputs/forecast.png \
+  --output outputs/forecast_chronos2.csv \
+  --plot outputs/forecast_chronos2.png \
   --prediction-length 48 \
   --device cuda
 ```
+
+For TimesFM, GPU behavior depends on the installed TimesFM/PyTorch backend and the host environment.
 
 ## CSV format
 
@@ -150,24 +241,32 @@ Typical covariates for electricity forecasting include:
 - Customer or area identifiers
 - Market-related indicators
 
+Backend behavior:
+
+- `chronos2` passes the history and future dataframe to Chronos-2.
+- `timesfm` uses the historical target values and future timestamps only.
+- `seasonal_naive` repeats the latest seasonal pattern.
+
 ## Interview explanation note
 
 This repository is intended to make the implementation image concrete, not only to mention time-series foundation models by name.
 
 Example explanation:
 
-> I built a small Docker Compose repository that runs Chronos-2 locally. It reads demand history and known future covariates such as weather forecasts from CSV, then outputs a 48-step forecast for the next day. It does not only output a point forecast; it also outputs the 0.1, 0.5, and 0.9 quantiles, so the result can be connected to risk evaluation using forecast intervals. In a real electricity business setting, I would evaluate this not only with MAPE, but also with imbalance cost, trading P&L, and operational risk.
+> I built a small Docker Compose repository that can switch between Chronos-2 and TimesFM. Chronos-2 is useful when I want to test covariate-informed forecasting with known future information such as weather forecasts. TimesFM is useful as a separate univariate foundation-model baseline. I would not trust either model only because it is new. In a real electricity business setting, I would compare them against LightGBM, Prophet, and seasonal naive through rolling backtests, then evaluate not only MAPE but also prediction intervals, imbalance cost, trading P&L, and operational risk.
 
 ## Practical limitations
 
 - This is a minimal local validation repository, not a production forecasting platform.
 - The first model download requires network access.
+- TimesFM support is intentionally minimal and univariate in this repository.
 - Model licenses, internal-use permission, and data handling rules must be checked separately.
 - Real electricity forecasting requires more engineering around holidays, weather forecasts, customer attributes, installed capacity, market rules, missing-value handling, outlier correction, and rolling backtests.
 
 ## Suggested next steps
 
 - Add a rolling backtest command.
-- Compare Chronos-2 against LightGBM, Prophet, and seasonal naive baselines.
+- Compare Chronos-2 and TimesFM against LightGBM, Prophet, and seasonal naive baselines.
 - Add electricity-domain metrics such as MAPE, pinball loss, imbalance cost, and trading P&L.
+- Add optional TimesFM covariate support through XReg only after validating the dependency footprint.
 - Add a Streamlit or FastAPI dashboard for reviewing forecast results.

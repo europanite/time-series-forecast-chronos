@@ -50,7 +50,7 @@ def health() -> dict[str, str]:
 @app.post("/forecast", response_model=ForecastResponse)
 def forecast(req: ForecastRequest) -> ForecastResponse:
     settings = get_settings()
-    model_id = req.model_id or settings.model_id
+    model_id = req.model_id or settings.model_id_for_backend(req.backend)
     device = req.device or settings.device
     try:
         history_df = pd.DataFrame(req.records)
