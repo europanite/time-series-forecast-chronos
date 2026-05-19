@@ -1,7 +1,3 @@
-# 使い方:
-#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml run --rm forecast ...
-# 前提:
-#   NVIDIA Container Toolkit が入っていること。
 services:
   forecast:
     environment:
