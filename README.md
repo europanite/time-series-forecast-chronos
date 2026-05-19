@@ -1,11 +1,17 @@
 # Local Time-Series Forecasting with Docker Compose
 
+[![CI](https://github.com/europanite/time-series-forecast-chronos/actions/workflows/ci.yml/badge.svg)](https://github.com/europanite/time-series-forecast-chronos/actions/workflows/ci.yml)
+[![CodeQL Advanced](https://github.com/europanite/time-series-forecast-chronos/actions/workflows/codeql.yml/badge.svg)](https://github.com/europanite/time-series-forecast-chronos/actions/workflows/codeql.yml)
+[![pages-build-deployment](https://github.com/europanite/time-series-forecast-chronos/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/europanite/time-series-forecast-chronos/actions/workflows/pages/pages-build-deployment)
+[![Pytest](https://github.com/europanite/time-series-forecast-chronos/actions/workflows/pytest.yml/badge.svg)](https://github.com/europanite/time-series-forecast-chronos/actions/workflows/pytest.yml)
+[![Python Lint](https://github.com/europanite/time-series-forecast-chronos/actions/workflows/lint.yml/badge.svg)](https://github.com/europanite/time-series-forecast-chronos/actions/workflows/lint.yml)
+
 A minimal Docker Compose repository for running local time-series foundation models.
 
 The repository supports three interchangeable forecasting backends:
 
 - `chronos2`: Chronos-2 style forecasting through `chronos-forecasting`
-- `timesfm`: TimesFM 2.5 style forecasting through `timesfm[torch]`
+- `timesfm`: TimesFM 2.5 style forecasting through google-research/timesfm
 - `seasonal_naive`: offline smoke-test backend that needs no model download
 
 The main use case is to try zero-shot forecasting for data such as electricity demand, renewable energy generation, or market prices.
@@ -56,7 +62,7 @@ PREDICTION_LENGTH=48
 docker compose build
 ```
 
-The image installs both Chronos and TimesFM dependencies. TimesFM is installed from the Google Research GitHub repository because the PyPI package can lag behind the latest TimesFM 2.5 API. This can take longer than the Chronos-only version because TimesFM brings additional PyTorch-related packages.
+The image installs both Chronos and TimesFM dependencies. Chronos-2 requires Transformers 4.x, so TimesFM 2.5 is loaded through the official `google-research/timesfm` package instead of the Hugging Face Transformers port, which currently requires Transformers 5.x. This keeps both backends installable in one Docker image.
 
 ## 3. Generate sample data
 
@@ -220,45 +226,3 @@ Backend behavior:
 - `chronos2` passes the history and future dataframe to Chronos-2.
 - `timesfm` uses the historical target values and future timestamps only.
 - `seasonal_naive` repeats the latest seasonal pattern.
-
-## Interview explanation note
-
-This repository is intended to make the implementation image concrete, not only to mention time-series foundation models by name.
-
-Example explanation:
-
-> I built a small Docker Compose repository that can switch between Chronos-2 and TimesFM. Chronos-2 is useful when I want to test covariate-informed forecasting with known future information such as weather forecasts. TimesFM is useful as a separate univariate foundation-model baseline. I would not trust either model only because it is new. In a real electricity business setting, I would compare them against LightGBM, Prophet, and seasonal naive through rolling backtests, then evaluate not only MAPE but also prediction intervals, imbalance cost, trading P&L, and operational risk.
-
-## Practical limitations
-
-- This is a minimal local validation repository, not a production forecasting platform.
-- The first model download requires network access.
-- TimesFM support is intentionally minimal and univariate in this repository.
-- Model licenses, internal-use permission, and data handling rules must be checked separately.
-- Real electricity forecasting requires more engineering around holidays, weather forecasts, customer attributes, installed capacity, market rules, missing-value handling, outlier correction, and rolling backtests.
-
-## Suggested next steps
-
-- Add a rolling backtest command.
-- Compare Chronos-2 and TimesFM against LightGBM, Prophet, and seasonal naive baselines.
-- Add electricity-domain metrics such as MAPE, pinball loss, imbalance cost, and trading P&L.
-- Add optional TimesFM covariate support through XReg only after validating the dependency footprint.
-- Add a Streamlit or FastAPI dashboard for reviewing forecast results.
-
-## Troubleshooting
-
-### TimesFM `proxies` error
-
-If TimesFM fails with the following error:
-
-```text
-TypeError: TimesFM_2p5_200M_torch.__init__() got an unexpected keyword argument 'proxies'
-```
-
-rebuild the image from this updated repository:
-
-```bash
-docker compose build --no-cache
-```
-
-This repository pins `huggingface-hub` to `<1.0.0` because current TimesFM 2.5 releases can receive an unexpected `proxies` keyword through the Hugging Face Hub 1.x loading path.

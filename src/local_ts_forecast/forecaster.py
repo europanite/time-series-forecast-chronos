@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Sequence
 
 import numpy as np
 import pandas as pd
@@ -85,9 +84,9 @@ class Chronos2Forecaster:
 class TimesFMForecaster:
     """TimesFM backend for univariate zero-shot forecasting.
 
-    TimesFM 2.5 is a univariate time-series foundation model. This wrapper keeps the
-    output schema compatible with the Chronos backend so the CLI, API, and plotting
-    code can switch between backends with a single flag.
+    TimesFM 2.5 is loaded through the official google-research/timesfm package.
+    This avoids the Transformers 5.x dependency required by the Hugging Face
+    Transformers port, because Chronos-2 currently requires Transformers 4.x.
 
     Known future covariate columns are intentionally ignored by this minimal backend.
     Use the Chronos-2 backend when you want native multivariate/covariate-informed
@@ -97,49 +96,91 @@ class TimesFMForecaster:
     def __init__(self, config: ForecastConfig) -> None:
         self.config = config
         self._model = None
-        self._api_mode: str | None = None
 
     @property
     def model(self):  # noqa: ANN201 - external model type differs across versions
         if self._model is None:
-            self._model, self._api_mode = self._load_model()
+            self._model = self._load_model()
         return self._model
 
+    def _resolve_torch_device(self) -> str:
+        import torch
+
+        if self.config.device == "auto":
+            return "cuda" if torch.cuda.is_available() else "cpu"
+        if self.config.device == "cuda":
+            if not torch.cuda.is_available():
+                raise RuntimeError("DEVICE=cuda was requested, but CUDA is not available in this container.")
+            return "cuda"
+        return "cpu"
+
+    @staticmethod
+    def _patch_timesfm_init_for_hub_kwargs(model_cls: object) -> None:
+        """Ignore extra Hub metadata kwargs passed by some huggingface_hub versions."""
+
+        if getattr(model_cls, "_local_ts_forecast_hub_kwargs_patch", False):
+            return
+
+        original_init = model_cls.__init__
+        ignored_kwargs = {
+            "adapter_kwargs",
+            "cache_dir",
+            "device",
+            "force_download",
+            "local_files_only",
+            "paper_url",
+            "proxies",
+            "repo_url",
+            "resume_download",
+            "revision",
+            "token",
+        }
+
+        def compatible_init(self, *args, **kwargs):  # noqa: ANN001, ANN002, ANN003
+            for key in ignored_kwargs:
+                kwargs.pop(key, None)
+            return original_init(self, *args, **kwargs)
+
+        model_cls.__init__ = compatible_init
+        model_cls._local_ts_forecast_hub_kwargs_patch = True
+
     def _load_model(self):  # noqa: ANN201 - external model type differs across versions
+        import torch
         import timesfm
 
-        # Current TimesFM 2.5 API, documented by google-research/timesfm.
-        if hasattr(timesfm, "TimesFM_2p5_200M_torch"):
-            model = timesfm.TimesFM_2p5_200M_torch.from_pretrained(self.config.model_id)
-            model.compile(
-                timesfm.ForecastConfig(
-                    max_context=self.config.context_length or 1024,
-                    max_horizon=self.config.prediction_length,
-                    normalize_inputs=True,
-                    use_continuous_quantile_head=True,
-                    force_flip_invariance=True,
-                    infer_is_positive=True,
-                    fix_quantile_crossing=True,
-                )
-            )
-            return model, "timesfm_2p5"
+        self._resolve_torch_device()
+        model_id = self.config.model_id
+        if model_id == "google/timesfm-2.5-200m-transformers":
+            # Backward compatibility for older .env files and CLI invocations.
+            model_id = "google/timesfm-2.5-200m-pytorch"
 
-        # Older PyPI API used by TimesFM 1.0/2.0.
-        if hasattr(timesfm, "TimesFm"):
-            backend = "gpu" if self.config.device == "cuda" else "cpu"
-            model = timesfm.TimesFm(
-                hparams=timesfm.TimesFmHparams(
-                    backend=backend,
-                    per_core_batch_size=self.config.batch_size or 32,
-                    horizon_len=self.config.prediction_length,
-                    context_len=self.config.context_length or 2048,
-                    use_positional_embedding=False,
-                ),
-                checkpoint=timesfm.TimesFmCheckpoint(huggingface_repo_id=self.config.model_id),
-            )
-            return model, "timesfm_legacy"
+        torch.set_float32_matmul_precision("high")
+        model_cls = timesfm.TimesFM_2p5_200M_torch
+        # The official TimesFM 2.5 PyTorch wrapper does not accept a
+        # `device` keyword in `from_pretrained`. Its inner torch module
+        # selects cuda:0 when CUDA is visible, otherwise CPU.
+        try:
+            model = model_cls.from_pretrained(model_id)
+        except TypeError as exc:
+            if "unexpected keyword argument" not in str(exc):
+                raise
+            self._patch_timesfm_init_for_hub_kwargs(model_cls)
+            model = model_cls.from_pretrained(model_id)
 
-        raise RuntimeError("Unsupported timesfm package version. Install a recent timesfm[torch] package.")
+        max_context = cfg_context if (cfg_context := self.config.context_length) and cfg_context > 0 else 1024
+        max_horizon = max(128, validate_prediction_length(self.config.prediction_length))
+        model.compile(
+            timesfm.ForecastConfig(
+                max_context=max_context,
+                max_horizon=max_horizon,
+                normalize_inputs=True,
+                use_continuous_quantile_head=True,
+                force_flip_invariance=True,
+                infer_is_positive=True,
+                fix_quantile_crossing=True,
+            )
+        )
+        return model
 
     def predict(self, history_df: pd.DataFrame, future_df: pd.DataFrame | None = None) -> pd.DataFrame:
         cfg = self.config
@@ -165,16 +206,20 @@ class TimesFMForecaster:
             item_ids.append(item_id)
             future_by_id[item_id] = future_df[future_df[cfg.id_column] == item_id].sort_values(cfg.timestamp_column)
 
-        model = self.model
-        if self._api_mode == "timesfm_2p5":
-            point_forecast, quantile_forecast = model.forecast(horizon=prediction_length, inputs=inputs)
-        else:
-            # The legacy API uses a frequency category. 0 is the default high-frequency
-            # setting and is suitable for minute/hour/day data.
-            point_forecast, quantile_forecast = model.forecast(inputs, freq=[0] * len(inputs))
-
+        point_forecast, quantile_forecast = self.model.forecast(
+            horizon=prediction_length,
+            inputs=inputs,
+        )
         point_forecast = np.asarray(point_forecast)
         quantile_forecast = None if quantile_forecast is None else np.asarray(quantile_forecast)
+        if point_forecast.shape[1] < prediction_length:
+            raise ValueError(
+                "TimesFM returned fewer forecast steps than requested: "
+                f"returned={point_forecast.shape[1]}, requested={prediction_length}"
+            )
+        point_forecast = point_forecast[:, :prediction_length]
+        if quantile_forecast is not None:
+            quantile_forecast = quantile_forecast[:, :prediction_length, :]
 
         rows: list[dict[str, object]] = []
         for series_idx, item_id in enumerate(item_ids):
@@ -209,8 +254,8 @@ class TimesFMForecaster:
         if quantile_forecast is None or quantile_forecast.ndim != 3:
             return result
 
-        # TimesFM 2.5 returns last dimension as: mean, q10, q20, ..., q90.
-        # Older releases may expose a compatible experimental quantile tensor.
+        # Official TimesFM 2.5 tensors expose the last dimension as:
+        # mean, q10, q20, ..., q90.
         for q in self.config.quantile_levels:
             if not 0 < q < 1:
                 continue
