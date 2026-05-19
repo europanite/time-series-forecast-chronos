@@ -1,8 +1,9 @@
 # Chronos-2 currently requires Transformers 4.x. Do not pin Transformers 5.x here.
 # TimesFM 2.5 is loaded through the official google-research/timesfm package,
 # because its Transformers port requires Transformers 5.x and conflicts with Chronos-2.
+# Keep torch pinned. The Dockerfile selects the CUDA/CPU wheel index explicitly.
 huggingface-hub>=0.34.0,<1.0.0
-torch>=2.7.0,<3.0.0
+torch==2.7.1
 transformers>=4.41.0,<5.0.0
 timesfm[torch] @ git+https://github.com/google-research/timesfm.git
 -e .

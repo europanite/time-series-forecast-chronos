@@ -17,7 +17,7 @@ dependencies = [
   "pydantic>=2.7.0,<3.0.0",
   "python-multipart>=0.0.9,<1.0.0",
   "huggingface-hub>=0.34.0,<1.0.0",
-  "torch>=2.7.0,<3.0.0",
+  "torch==2.7.1",
   "transformers>=4.41.0,<5.0.0",
   "timesfm[torch] @ git+https://github.com/google-research/timesfm.git"
 ]

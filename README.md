@@ -177,6 +177,14 @@ To request TimesFM from the API, set `backend` to `timesfm` in the JSON payload.
 
 This requires NVIDIA Container Toolkit on the host machine.
 
+The image pins PyTorch to `2.7.1` and installs it from the CUDA 12.6 wheel index by default. This avoids Docker silently installing a newer CUDA wheel that requires a newer NVIDIA driver than the host provides. Rebuild the image after changing PyTorch settings:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml build --no-cache forecast
+```
+
+For CPU-only builds, set `PYTORCH_INDEX_URL=https://download.pytorch.org/whl/cpu` before rebuilding.
+
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.gpu.yml run --rm forecast \
   python -m local_ts_forecast.cli forecast \

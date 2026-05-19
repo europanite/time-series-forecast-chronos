@@ -2,6 +2,9 @@ services:
   forecast:
     build:
       context: .
+      args:
+        PYTORCH_VERSION: ${PYTORCH_VERSION:-2.7.1}
+        PYTORCH_INDEX_URL: ${PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu126}
     image: local-ts-forecast:latest
     env_file:
       - .env
@@ -21,6 +24,9 @@ services:
   api:
     build:
       context: .
+      args:
+        PYTORCH_VERSION: ${PYTORCH_VERSION:-2.7.1}
+        PYTORCH_INDEX_URL: ${PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu126}
     image: local-ts-forecast:latest
     env_file:
       - .env
