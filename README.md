@@ -1,4 +1,5 @@
-# Local Time-Series Forecasting with Docker Compose
+# [time-series-forecast-chronos](https://github.com/europanite/time-series-forecast-chronos "time-series-forecast-chronos")
+
 
 [![CI](https://github.com/europanite/time-series-forecast-chronos/actions/workflows/ci.yml/badge.svg)](https://github.com/europanite/time-series-forecast-chronos/actions/workflows/ci.yml)
 [![CodeQL Advanced](https://github.com/europanite/time-series-forecast-chronos/actions/workflows/codeql.yml/badge.svg)](https://github.com/europanite/time-series-forecast-chronos/actions/workflows/codeql.yml)
@@ -6,7 +7,7 @@
 [![Pytest](https://github.com/europanite/time-series-forecast-chronos/actions/workflows/pytest.yml/badge.svg)](https://github.com/europanite/time-series-forecast-chronos/actions/workflows/pytest.yml)
 [![Python Lint](https://github.com/europanite/time-series-forecast-chronos/actions/workflows/lint.yml/badge.svg)](https://github.com/europanite/time-series-forecast-chronos/actions/workflows/lint.yml)
 
-A minimal Docker Compose repository for running local time-series foundation models.
+A Container for Time-Series Forecasting with local time-series foundation models.
 
 The repository supports three interchangeable forecasting backends:
 
