@@ -18,10 +18,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13" , "3.14" ]
+        python-version: [ "3.10", "3.11", "3.12", "3.13" ]
     env:
       PYTHONUTF8: "1"
-      PYTHONPATH: ${{ github.workspace }}/service
+      PYTHONPATH: ${{ github.workspace }}/service/src
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -40,9 +40,7 @@ jobs:
           set -eux
           python -m pip install -U pip
           python -m pip install -r service/requirements.test.txt
-          if [ -f service/pyproject.toml ] || [ -f service/setup.cfg ] || [ -f service/setup.py ]; then
-            python -m pip install -e service
-          fi
+          python -m pip install -e service --no-deps
       - name: Install deps (Windows)
         if: matrix.os == 'windows-latest'
         shell: pwsh
@@ -50,14 +48,7 @@ jobs:
           $ErrorActionPreference = "Stop"
           python -m pip install -U pip
           python -m pip install -r service/requirements.test.txt
-          $hasPythonProject = (Test-Path -Path 'service/pyproject.toml') -or
-                            (Test-Path -Path 'service/setup.cfg') -or
-                            (Test-Path -Path 'service/setup.py')
-          if ($hasPythonProject) {
-            python -m pip install -e service
-          } else {
-            Write-Host 'service packaging files not found; skipping'
-          }
+          python -m pip install -e service --no-deps
       - name: Show versions
         shell: bash
         run: |
@@ -68,7 +59,7 @@ jobs:
       - name: Run tests with coverage
         shell: bash
         run: |
-          python -m coverage run -m pytest -q
+          python -m coverage run -m pytest service/tests -q
           python -m coverage xml -o coverage.xml
       - name: Upload coverage.xml
         uses: actions/upload-artifact@v6

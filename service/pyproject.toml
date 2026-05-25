@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "local-ts-forecast"
 version = "0.1.0"
 description = "Docker Compose based local time-series forecasting with Chronos-2 and TimesFM."
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
   "chronos-forecasting==2.2.2",
   "pandas[pyarrow]>=2.2.0,<3.0.0",

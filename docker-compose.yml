@@ -1,7 +1,8 @@
 services:
   forecast:
     build:
-      context: .
+      context: ./service
+      dockerfile: Dockerfile
       args:
         PYTORCH_VERSION: ${PYTORCH_VERSION:-2.7.1}
         PYTORCH_INDEX_URL: ${PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu126}
@@ -15,6 +16,7 @@ services:
       TIMESFM_MODEL_ID: ${TIMESFM_MODEL_ID:-google/timesfm-2.5-200m-pytorch}
       MODEL_ID: ${MODEL_ID:-autogluon/chronos-2-small}
       DEVICE: ${DEVICE:-cpu}
+      PYTHONPATH: /workspace/service/src
     volumes:
       - .:/workspace
       - hf-cache:/cache/huggingface
@@ -23,7 +25,8 @@ services:
 
   api:
     build:
-      context: .
+      context: ./service
+      dockerfile: Dockerfile
       args:
         PYTORCH_VERSION: ${PYTORCH_VERSION:-2.7.1}
         PYTORCH_INDEX_URL: ${PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu126}
@@ -37,6 +40,7 @@ services:
       TIMESFM_MODEL_ID: ${TIMESFM_MODEL_ID:-google/timesfm-2.5-200m-pytorch}
       MODEL_ID: ${MODEL_ID:-autogluon/chronos-2-small}
       DEVICE: ${DEVICE:-cpu}
+      PYTHONPATH: /workspace/service/src
     volumes:
       - .:/workspace
       - hf-cache:/cache/huggingface

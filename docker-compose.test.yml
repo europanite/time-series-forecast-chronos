@@ -1,0 +1,12 @@
+services:
+  service_test:
+    build:
+      context: ./service
+      dockerfile: Dockerfile.test
+    image: local/service-test:ci
+    environment:
+      PYTHONPATH: /workspace/service/src
+    volumes:
+      - .:/workspace
+      - ./service/reports/ci:/reports
+    working_dir: /workspace/service
