@@ -7,20 +7,7 @@ name = "local-ts-forecast"
 version = "0.1.0"
 description = "Docker Compose based local time-series forecasting with Chronos-2 and TimesFM."
 requires-python = ">=3.10"
-dependencies = [
-  "chronos-forecasting==2.2.2",
-  "pandas[pyarrow]>=2.2.0,<3.0.0",
-  "numpy>=1.26.0,<3.0.0",
-  "matplotlib>=3.8.0,<4.0.0",
-  "fastapi>=0.115.0,<1.0.0",
-  "uvicorn[standard]>=0.34.0,<1.0.0",
-  "pydantic>=2.7.0,<3.0.0",
-  "python-multipart>=0.0.9,<1.0.0",
-  "huggingface-hub>=0.34.0,<1.0.0",
-  "torch==2.7.1",
-  "transformers>=4.41.0,<5.0.0",
-  "timesfm[torch] @ git+https://github.com/google-research/timesfm.git"
-]
+dependencies = []
 
 [project.scripts]
 ts-forecast = "local_ts_forecast.cli:main"

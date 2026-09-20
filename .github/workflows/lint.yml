@@ -26,12 +26,12 @@ jobs:
       - name: Install tools
         run: |
           python -m pip install -U pip
-          python -m pip install -r service/requirements.test.txt
+          pip install -r service/requirements.test.txt
       - name: Ruff (lint)
-        run: ruff check service
+        run: ruff check .
       - name: Ruff SARIF
         if: always()
-        run: ruff check --output-format sarif service > ruff.sarif || true
+        run: ruff check --output-format sarif . > ruff.sarif || true
       - name: Upload SARIF to Code Scanning
         uses: github/codeql-action/upload-sarif@v4
         with:
