@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pandas as pd
 
-
 REQUIRED_HISTORY_COLUMNS = {"id", "timestamp", "target"}
 REQUIRED_FUTURE_COLUMNS = {"id", "timestamp"}
 
