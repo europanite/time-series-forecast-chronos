@@ -13,6 +13,4 @@ python-multipart==0.0.32
 huggingface-hub==1.32.0
 torch==2.7.1
 transformers==5.17.0
-timesfm[torch] @ git+https://github.com/google-research/timesfm.git
-
--e .
+timesfm[torch]==3.0.2
