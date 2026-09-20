@@ -17,34 +17,22 @@ jobs:
         python-version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
     steps:
       - uses: actions/checkout@v6
-
-      - name: Build backend container
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+          cache-dependency-path: service/requirements.test.txt
+      - name: Install tools
         run: |
-          docker compose -f docker-compose.test.yml build backend_test
-
-      - name: Ruff
-        run: |
-          docker compose -f docker-compose.test.yml run --rm \
-            --volume "$PWD:/repo" \
-            --workdir /repo \
-            backend_test \
-            sh -lc 'cd backend && python -m pip install -r requirements.test.txt && cd .. && ruff check .'
-
+          python -m pip install -U pip
+          pip install -r service/requirements.test.txt
+      - name: Ruff (lint)
+        run: ruff check .
       - name: Ruff SARIF
         if: always()
-        run: |
-          docker compose -f docker-compose.test.yml run --rm \
-            --volume "$PWD:/repo" \
-            --workdir /repo \
-            backend_test \
-            sh -lc 'cd backend && python -m pip install -r requirements.test.txt && cd .. && ruff check --output-format sarif . > ruff.sarif || true'
-
+        run: ruff check --output-format sarif . > ruff.sarif || true
       - name: Upload SARIF to Code Scanning
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: ruff.sarif
-
-      - name: Clean up
-        if: always()
-        run: |
-          docker compose -f docker-compose.test.yml down --volumes --remove-orphans
