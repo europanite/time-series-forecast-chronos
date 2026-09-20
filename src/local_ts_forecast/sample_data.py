@@ -21,7 +21,7 @@ def build_sample_data(
     weekly = np.sin(2 * np.pi * half_hours / (48 * 7))
     temp = 10 + 8 * daily + 2 * weekly + rng.normal(0, 0.8, len(index))
     solar = np.maximum(0, np.sin(2 * np.pi * (half_hours % 48 - 12) / 48))
-    holiday = ((index.dayofweek >= 5)).astype(int)
+    holiday = (index.dayofweek >= 5).astype(int)
 
     # Electricity-like demand. It increases when it is cold/hot, drops on holidays,
     # and has half-hour seasonality. This is only sample data.

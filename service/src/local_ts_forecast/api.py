@@ -69,5 +69,5 @@ def forecast(req: ForecastRequest) -> ForecastResponse:
             if pd.api.types.is_datetime64_any_dtype(pred_df[column]):
                 pred_df[column] = pred_df[column].dt.strftime("%Y-%m-%dT%H:%M:%S")
         return ForecastResponse(rows=pred_df.to_dict(orient="records"))
-    except Exception as exc:  # noqa: BLE001 - surface validation/model errors through API
+    except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

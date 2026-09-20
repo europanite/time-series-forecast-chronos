@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import os
-from pathlib import Path
 
 from .forecaster import ForecastConfig, build_forecaster
 from .io import ensure_parent, read_csv
