@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 ARG PYTORCH_VERSION=2.7.1
 ARG PYTORCH_INDEX_URL=https://download.pytorch.org/whl/cu126
@@ -19,9 +19,11 @@ RUN apt-get update \
 
 COPY pyproject.toml requirements.txt ./
 COPY src ./src
-RUN pip install --upgrade pip \
-    && pip install "torch==${PYTORCH_VERSION}" --index-url "${PYTORCH_INDEX_URL}" \
-    && pip install -r requirements.txt
+
+RUN python -m pip install --upgrade pip \
+    && python -m pip install "torch==${PYTORCH_VERSION}" --index-url "${PYTORCH_INDEX_URL}" \
+    && python -m pip install -r requirements.txt \
+    && python -m pip install -e .
 
 COPY . .
 

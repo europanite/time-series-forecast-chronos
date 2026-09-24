@@ -235,3 +235,9 @@ Backend behavior:
 - `chronos2` passes the history and future dataframe to Chronos-2.
 - `timesfm` uses the historical target values and future timestamps only.
 - `seasonal_naive` repeats the latest seasonal pattern.
+
+---
+
+# License
+- Apache License 2.0
+

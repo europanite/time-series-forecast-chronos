@@ -1,10 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import pandas as pd
-
 
 REQUIRED_HISTORY_COLUMNS = {"id", "timestamp", "target"}
 REQUIRED_FUTURE_COLUMNS = {"id", "timestamp"}
